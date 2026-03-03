@@ -3,14 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\MailjetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
+    protected MailjetService $mailjetService;
+
+    public function __construct(MailjetService $mailjetService)
+    {
+        $this->mailjetService = $mailjetService;
+    }
+
     /**
      * Register a new user.
      */
@@ -35,6 +44,17 @@ class AuthController extends Controller
         ]);
 
         $token = JWTAuth::fromUser($user);
+
+        // Enviar correo de bienvenida
+        try {
+            $this->mailjetService->sendWelcomeEmail($user);
+        } catch (\Exception $e) {
+            Log::error('Failed to send welcome email', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            // No fallar el registro si el correo falla
+        }
 
         return response()->json([
             'message' => 'User registered successfully',

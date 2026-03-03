@@ -143,7 +143,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:products',
+            'slug' => 'nullable|string|max:255|unique:products',
             'category_id' => 'required|exists:categories,id',
             'team_id' => 'required|exists:teams,id',
             'price_usd' => 'required|numeric|min:0',
@@ -153,6 +153,11 @@ class ProductController extends Controller
             'variants' => 'required|array|min:1',
             'variants.*.size_id' => 'required|exists:sizes,id',
         ]);
+
+        // Generar slug automáticamente si no se proporciona
+        if (empty($validated['slug'])) {
+            $validated['slug'] = $this->generateUniqueSlug($validated['name']);
+        }
 
         $product = Product::create($validated);
 
@@ -222,7 +227,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'slug' => 'sometimes|string|max:255|unique:products,slug,' . $product->id,
+            'slug' => 'sometimes|nullable|string|max:255|unique:products,slug,' . $product->id,
             'category_id' => 'sometimes|exists:categories,id',
             'team_id' => 'sometimes|exists:teams,id',
             'price_usd' => 'sometimes|numeric|min:0',
@@ -232,6 +237,11 @@ class ProductController extends Controller
             'variants' => 'sometimes|array',
             'variants.*.size_id' => 'required|exists:sizes,id',
         ]);
+
+        // Si se actualiza el nombre pero no el slug, regenerar el slug
+        if (isset($validated['name']) && !isset($validated['slug'])) {
+            $validated['slug'] = $this->generateUniqueSlug($validated['name'], $product->id);
+        }
 
         $product->update($validated);
 
@@ -569,5 +579,51 @@ class ProductController extends Controller
             'status' => 'success',
             'message' => 'Variant removed successfully'
         ]);
+    }
+
+    /**
+     * Generate a unique slug from product name
+     */
+    protected function generateUniqueSlug(string $name, ?string $excludeId = null): string
+    {
+        // Convertir a minúsculas y reemplazar espacios y caracteres especiales
+        $slug = strtolower($name);
+        
+        // Reemplazar caracteres especiales comunes del español
+        $slug = str_replace(
+            ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'],
+            ['a', 'e', 'i', 'o', 'u', 'n', 'u'],
+            $slug
+        );
+        
+        // Reemplazar cualquier caracter que no sea letra, número o espacio con guión
+        $slug = preg_replace('/[^a-z0-9\s-]/', '', $slug);
+        
+        // Reemplazar múltiples espacios o guiones con un solo guión
+        $slug = preg_replace('/[\s-]+/', '-', $slug);
+        
+        // Eliminar guiones al inicio y final
+        $slug = trim($slug, '-');
+        
+        // Verificar si el slug ya existe
+        $originalSlug = $slug;
+        $counter = 1;
+        
+        while (true) {
+            $query = Product::where('slug', $slug);
+            
+            if ($excludeId) {
+                $query->where('id', '!=', $excludeId);
+            }
+            
+            if (!$query->exists()) {
+                break;
+            }
+            
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+        
+        return $slug;
     }
 }

@@ -493,6 +493,8 @@ public function wompiWebhook(Request $request): JsonResponse
         $order = Order::where('id', $data['reference'])->first();
         
         if ($order && $order->status === 'pending') {
+            $oldStatus = $order->status;
+            
             $order->update([
                 'status' => 'paid',
                 'payment_data' => array_merge($order->payment_data ?? [], [
@@ -511,6 +513,16 @@ public function wompiWebhook(Request $request): JsonResponse
                 'transaction_id' => $data['id'],
                 'amount' => $data['amount_in_cents'] ?? null,
             ]);
+
+            // Enviar correo de confirmación de pago
+            try {
+                $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, 'paid');
+            } catch (\Exception $e) {
+                Log::error('Failed to send payment confirmation email', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         } else {
             Log::warning('Wompi: Order not found or not pending', [
                 'reference' => $data['reference'],
@@ -521,6 +533,8 @@ public function wompiWebhook(Request $request): JsonResponse
         $order = Order::where('id', $data['reference'])->first();
         
         if ($order && $order->status === 'pending') {
+            $oldStatus = $order->status;
+            
             $order->update([
                 'status' => 'failed',
                 'payment_data' => array_merge($order->payment_data ?? [], [
@@ -537,6 +551,16 @@ public function wompiWebhook(Request $request): JsonResponse
                 'transaction_id' => $data['id'],
                 'failure_status' => $data['status'],
             ]);
+
+            // Enviar correo de pago fallido
+            try {
+                $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, 'failed');
+            } catch (\Exception $e) {
+                Log::error('Failed to send payment failure email', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         } else {
             Log::warning('Wompi: Order not found or not pending for failure', [
                 'reference' => $data['reference'],
@@ -603,10 +627,16 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
     ]);
 
     // Estados de NOWPayments: waiting, confirming, confirmed, sending, partially_paid, finished, failed, refunded, expired
+    $oldStatus = $order->status;
+    $statusChanged = false;
+    
     switch ($paymentStatus) {
         case 'finished':
-            $order->status = 'paid';
-            $order->paid_at = now();
+            if ($order->status !== 'paid') {
+                $order->status = 'paid';
+                $order->paid_at = now();
+                $statusChanged = true;
+            }
             break;
             
         case 'partially_paid':
@@ -616,7 +646,10 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
         case 'failed':
         case 'expired':
         case 'refunded':
-            $order->status = 'failed';
+            if ($order->status !== 'failed') {
+                $order->status = 'failed';
+                $statusChanged = true;
+            }
             break;
             
         case 'waiting':
@@ -629,9 +662,18 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
 
     $order->save();
 
-    // Enviar email si el pago fue exitoso
-    if ($paymentStatus === 'finished') {
-        // Mail::to($order->user->email)->send(new OrderConfirmed($order));
+    // Enviar correo si el estado cambió
+    if ($statusChanged) {
+        try {
+            $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, $order->status);
+        } catch (\Exception $e) {
+            Log::error('Failed to send NOWPayments status update email', [
+                'order_id' => $order->id,
+                'old_status' => $oldStatus,
+                'new_status' => $order->status,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     return response()->json(['status' => 'success']);

@@ -20,6 +20,55 @@ class MailjetService
         $this->fromName = config('services.mailjet.from_name', config('mail.from.name'));
     }
 
+    protected function getEmailTemplate($content, $title = '')
+    {
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        </head>
+        <body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f3f4f6;'>
+            <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #f3f4f6; padding: 20px 0;'>
+                <tr>
+                    <td align='center'>
+                        <table width='600' cellpadding='0' cellspacing='0' style='background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+                            <!-- Header -->
+                            <tr>
+                                <td style='background: linear-gradient(135deg, #075e38 0%, #0a7d4a 100%); padding: 40px 30px; text-align: center;'>
+                                    <img src='https://res.cloudinary.com/dww5s0b7p/image/upload/v1772572062/Camerino-2_1_1_gvqdfd.png' alt='Gran Camerino' style='max-width: 180px; height: auto; margin-bottom: 20px;'>
+                                    " . ($title ? "<h1 style='color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;'>{$title}</h1>" : "") . "
+                                </td>
+                            </tr>
+                            
+                            <!-- Content -->
+                            <tr>
+                                <td style='padding: 40px 30px;'>
+                                    {$content}
+                                </td>
+                            </tr>
+                            
+                            <!-- Footer -->
+                            <tr>
+                                <td style='background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;'>
+                                    <p style='color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0 0 10px 0;'>
+                                        ¿Tienes preguntas? Contáctanos en cualquier momento.
+                                    </p>
+                                    <p style='color: #9ca3af; font-size: 12px; margin: 0;'>
+                                        © 2024 Gran Camerino. Todos los derechos reservados.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        ";
+    }
+
     public function sendOrderConfirmation($order)
     {
         $user = $order->user;
@@ -27,29 +76,58 @@ class MailjetService
 
         $itemsHtml = '';
         foreach ($items as $item) {
+            $customization = '';
+            if ($item->customization_name || $item->customization_number) {
+                $customization = '<br><small style="color: #666; font-style: italic;">';
+                if ($item->customization_name) {
+                    $customization .= "👤 Nombre: {$item->customization_name} ";
+                }
+                if ($item->customization_number) {
+                    $customization .= "🔢 Número: {$item->customization_number}";
+                }
+                $customization .= '</small>';
+            }
+            
             $itemsHtml .= "
                 <tr>
-                    <td style='padding: 10px; border-bottom: 1px solid #eee;'>{$item->product_name} - {$item->product_size}</td>
-                    <td style='padding: 10px; border-bottom: 1px solid #eee; text-align: center;'>{$item->quantity}</td>
-                    <td style='padding: 10px; border-bottom: 1px solid #eee; text-align: right;'>\${$item->unit_price}</td>
-                    <td style='padding: 10px; border-bottom: 1px solid #eee; text-align: right;'>\${$item->total_price}</td>
+                    <td style='padding: 15px 10px; border-bottom: 1px solid #e5e7eb;'>
+                        <strong style='color: #1f2937;'>{$item->product_name}</strong><br>
+                        <span style='color: #6b7280; font-size: 14px;'>Talla: {$item->product_size}</span>
+                        {$customization}
+                    </td>
+                    <td style='padding: 15px 10px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #1f2937;'>{$item->quantity}</td>
+                    <td style='padding: 15px 10px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #1f2937;'>\${$item->unit_price}</td>
+                    <td style='padding: 15px 10px; border-bottom: 1px solid #e5e7eb; text-align: right; color: #075e38; font-weight: bold;'>\${$item->total_price}</td>
                 </tr>
             ";
         }
 
-        $htmlContent = "
-            <h2>¡Gracias por tu orden!</h2>
-            <p>Hola {$user->name},</p>
-            <p>Hemos recibido tu orden <strong>#{$order->order_number}</strong></p>
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$user->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;'>
+                Hemos recibido tu orden y estamos procesándola. A continuación encontrarás los detalles:
+            </p>
             
-            <h3>Detalles de la orden:</h3>
-            <table style='width: 100%; border-collapse: collapse;'>
+            <!-- Order Number -->
+            <div style='background-color: #f0fdf4; border-left: 4px solid #075e38; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;'>
+                <p style='margin: 0; color: #065f46; font-size: 14px;'>Número de orden</p>
+                <p style='margin: 5px 0 0 0; color: #075e38; font-size: 24px; font-weight: bold;'>#{$order->order_number}</p>
+            </div>
+            
+            <h2 style='color: #075e38; font-size: 20px; margin: 0 0 20px 0; border-bottom: 2px solid #075e38; padding-bottom: 10px;'>
+                Detalles de tu pedido
+            </h2>
+            
+            <!-- Products Table -->
+            <table width='100%' cellpadding='0' cellspacing='0' style='border-collapse: collapse; margin-bottom: 30px;'>
                 <thead>
-                    <tr style='background-color: #f5f5f5;'>
-                        <th style='padding: 10px; text-align: left;'>Producto</th>
-                        <th style='padding: 10px; text-align: center;'>Cantidad</th>
-                        <th style='padding: 10px; text-align: right;'>Precio</th>
-                        <th style='padding: 10px; text-align: right;'>Total</th>
+                    <tr style='background-color: #f9fafb;'>
+                        <th style='padding: 12px 10px; text-align: left; color: #075e38; font-size: 14px; font-weight: bold; border-bottom: 2px solid #075e38;'>Producto</th>
+                        <th style='padding: 12px 10px; text-align: center; color: #075e38; font-size: 14px; font-weight: bold; border-bottom: 2px solid #075e38;'>Cant.</th>
+                        <th style='padding: 12px 10px; text-align: right; color: #075e38; font-size: 14px; font-weight: bold; border-bottom: 2px solid #075e38;'>Precio</th>
+                        <th style='padding: 12px 10px; text-align: right; color: #075e38; font-size: 14px; font-weight: bold; border-bottom: 2px solid #075e38;'>Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,15 +135,35 @@ class MailjetService
                 </tbody>
             </table>
             
-            <div style='margin-top: 20px; padding: 15px; background-color: #f9f9f9;'>
-                <p><strong>Subtotal:</strong> \${$order->subtotal}</p>
-                <p><strong>Descuento:</strong> \${$order->discount_amount}</p>
-                <p><strong>Total:</strong> \${$order->total_amount}</p>
+            <!-- Totals -->
+            <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom: 30px;'>
+                <tr>
+                    <td style='padding: 10px 0; text-align: right; color: #6b7280; font-size: 15px;'>Subtotal:</td>
+                    <td style='padding: 10px 0 10px 20px; text-align: right; color: #1f2937; font-size: 15px; font-weight: 600; width: 120px;'>\${$order->subtotal}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 10px 0; text-align: right; color: #6b7280; font-size: 15px;'>Descuento:</td>
+                    <td style='padding: 10px 0 10px 20px; text-align: right; color: #dc2626; font-size: 15px; font-weight: 600;'>-\${$order->discount_amount}</td>
+                </tr>
+                <tr style='border-top: 2px solid #075e38;'>
+                    <td style='padding: 15px 0 0 0; text-align: right; color: #075e38; font-size: 18px; font-weight: bold;'>Total:</td>
+                    <td style='padding: 15px 0 0 20px; text-align: right; color: #075e38; font-size: 24px; font-weight: bold;'>\${$order->total_amount}</td>
+                </tr>
+            </table>
+            
+            <!-- Status -->
+            <div style='background-color: #fffbeb; border: 1px solid #fbbf24; padding: 15px 20px; border-radius: 6px; margin-bottom: 20px;'>
+                <p style='margin: 0; color: #92400e; font-size: 14px;'>
+                    <strong>Estado actual:</strong> <span style='color: #b45309; font-weight: bold;'>{$this->getStatusLabel($order->status)}</span>
+                </p>
             </div>
             
-            <p style='margin-top: 20px;'>Estado actual: <strong>{$this->getStatusLabel($order->status)}</strong></p>
-            <p>Te notificaremos cuando tu orden cambie de estado.</p>
+            <p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0;'>
+                Te mantendremos informado sobre cualquier cambio en el estado de tu orden.
+            </p>
         ";
+
+        $htmlContent = $this->getEmailTemplate($content, '¡Gracias por tu orden!');
 
         return $this->sendEmail(
             $user->email,
@@ -75,24 +173,107 @@ class MailjetService
         );
     }
 
+    public function sendWelcomeEmail($user)
+    {
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$user->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;'>
+                ¡Gracias por unirte a Gran Camerino! Estamos emocionados de tenerte con nosotros en nuestra comunidad de apasionados del fútbol.
+            </p>
+            
+            <div style='background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; padding: 30px; margin: 30px 0;'>
+                <h3 style='color: #075e38; font-size: 20px; margin: 0 0 20px 0;'>🎉 ¿Qué puedes hacer ahora?</h3>
+                <ul style='color: #1f2937; font-size: 15px; line-height: 2; margin: 0; padding-left: 20px;'>
+                    <li><strong style='color: #075e38;'>Explora</strong> nuestro catálogo de camisetas oficiales</li>
+                    <li><strong style='color: #075e38;'>Personaliza</strong> tu camiseta con nombre y número</li>
+                    <li><strong style='color: #075e38;'>Guarda</strong> tus productos favoritos</li>
+                    <li><strong style='color: #075e38;'>Recibe</strong> notificaciones sobre tus pedidos</li>
+                </ul>
+            </div>
+            
+            <div style='background-color: #f0fdf4; border-left: 4px solid #075e38; padding: 20px; margin: 30px 0; border-radius: 4px;'>
+                <p style='margin: 0; color: #065f46; font-size: 15px; line-height: 1.6;'>
+                    <strong>💡 Consejo:</strong> Mantén tu información de contacto actualizada para recibir todas las novedades y promociones especiales.
+                </p>
+            </div>
+            
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 30px 0 0 0;'>
+                Si tienes alguna pregunta, nuestro equipo está aquí para ayudarte.
+            </p>
+            <p style='color: #075e38; font-size: 16px; font-weight: bold; margin: 20px 0 0 0;'>
+                ¡Felices compras! ⚽
+            </p>
+        ";
+
+        $htmlContent = $this->getEmailTemplate($content, '¡Bienvenido a Gran Camerino!');
+
+        return $this->sendEmail(
+            $user->email,
+            $user->name,
+            "¡Bienvenido a Gran Camerino!",
+            $htmlContent
+        );
+    }
+
     public function sendOrderStatusUpdate($order, $oldStatus, $newStatus)
     {
         $user = $order->user;
+        
+        $statusIcon = $this->getStatusIcon($newStatus);
+        $statusColor = $this->getStatusColor($newStatus);
 
-        $htmlContent = "
-            <h2>Actualización de tu orden</h2>
-            <p>Hola {$user->name},</p>
-            <p>El estado de tu orden <strong>#{$order->order_number}</strong> ha cambiado.</p>
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$user->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;'>
+                Tenemos una actualización sobre tu orden <strong style='color: #075e38;'>#{$order->order_number}</strong>
+            </p>
             
-            <div style='margin: 20px 0; padding: 15px; background-color: #f0f9ff; border-left: 4px solid #3b82f6;'>
-                <p><strong>Estado anterior:</strong> {$this->getStatusLabel($oldStatus)}</p>
-                <p><strong>Estado actual:</strong> {$this->getStatusLabel($newStatus)}</p>
+            <!-- Status Change Box -->
+            <div style='background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 8px; padding: 30px; margin: 30px 0; border: 2px solid #e5e7eb;'>
+                <table width='100%' cellpadding='0' cellspacing='0'>
+                    <tr>
+                        <td style='text-align: center; padding-bottom: 20px;'>
+                            <div style='font-size: 48px; margin-bottom: 10px;'>{$statusIcon}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='text-align: center;'>
+                            <p style='margin: 0 0 10px 0; color: #6b7280; font-size: 14px;'>Estado anterior</p>
+                            <p style='margin: 0 0 20px 0; color: #9ca3af; font-size: 16px; text-decoration: line-through;'>{$this->getStatusLabel($oldStatus)}</p>
+                            <div style='width: 40px; height: 2px; background-color: #075e38; margin: 0 auto 20px auto;'></div>
+                            <p style='margin: 0 0 10px 0; color: #6b7280; font-size: 14px;'>Estado actual</p>
+                            <p style='margin: 0; color: {$statusColor}; font-size: 24px; font-weight: bold;'>{$this->getStatusLabel($newStatus)}</p>
+                        </td>
+                    </tr>
+                </table>
             </div>
             
             {$this->getStatusMessage($newStatus)}
             
-            <p style='margin-top: 20px;'>Total de la orden: <strong>\${$order->total_amount}</strong></p>
+            <!-- Order Summary -->
+            <div style='background-color: #f9fafb; border-radius: 6px; padding: 20px; margin: 30px 0;'>
+                <table width='100%' cellpadding='0' cellspacing='0'>
+                    <tr>
+                        <td style='padding: 8px 0; color: #6b7280; font-size: 14px;'>Número de orden:</td>
+                        <td style='padding: 8px 0; text-align: right; color: #075e38; font-size: 14px; font-weight: bold;'>#{$order->order_number}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding: 8px 0; color: #6b7280; font-size: 14px;'>Total:</td>
+                        <td style='padding: 8px 0; text-align: right; color: #075e38; font-size: 18px; font-weight: bold;'>\${$order->total_amount}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0;'>
+                Seguiremos manteniéndote informado sobre cualquier cambio en tu pedido.
+            </p>
         ";
+
+        $htmlContent = $this->getEmailTemplate($content, 'Actualización de tu orden');
 
         return $this->sendEmail(
             $user->email,
@@ -161,17 +342,96 @@ class MailjetService
         };
     }
 
-    protected function getStatusMessage(string $status): string
+    protected function getStatusIcon(string $status): string
     {
         return match($status) {
-            'paid' => '<p>¡Tu pago ha sido confirmado! Comenzaremos a preparar tu orden.</p>',
-            'preparing' => '<p>Estamos preparando tu orden con mucho cuidado.</p>',
-            'shipped' => '<p>¡Tu orden ha sido enviada! Pronto la recibirás.</p>',
-            'in_transit' => '<p>Tu orden está en camino.</p>',
-            'delivered' => '<p>¡Tu orden ha sido entregada! Esperamos que disfrutes tu compra.</p>',
-            'cancelled' => '<p>Tu orden ha sido cancelada. Si tienes preguntas, contáctanos.</p>',
-            'failed' => '<p>Hubo un problema con tu orden. Por favor contáctanos.</p>',
-            default => ''
+            'paid' => '✅',
+            'preparing' => '📦',
+            'shipped' => '🚚',
+            'in_transit' => '🛫',
+            'delivered' => '🎉',
+            'cancelled' => '❌',
+            'failed' => '⚠️',
+            default => '📋'
         };
+    }
+
+    protected function getStatusColor(string $status): string
+    {
+        return match($status) {
+            'paid' => '#075e38',
+            'preparing' => '#0891b2',
+            'shipped' => '#7c3aed',
+            'in_transit' => '#2563eb',
+            'delivered' => '#16a34a',
+            'cancelled' => '#dc2626',
+            'failed' => '#ea580c',
+            default => '#6b7280'
+        };
+    }
+
+    protected function getStatusMessage(string $status): string
+    {
+        $messages = [
+            'paid' => [
+                'icon' => '💳',
+                'title' => '¡Pago confirmado!',
+                'message' => 'Tu pago ha sido procesado exitosamente. Comenzaremos a preparar tu orden de inmediato.',
+                'color' => '#075e38'
+            ],
+            'preparing' => [
+                'icon' => '📦',
+                'title' => 'Preparando tu orden',
+                'message' => 'Estamos empacando tu pedido con mucho cuidado para que llegue en perfectas condiciones.',
+                'color' => '#0891b2'
+            ],
+            'shipped' => [
+                'icon' => '🚚',
+                'title' => '¡Tu orden está en camino!',
+                'message' => 'Tu pedido ha sido enviado y pronto estará en tus manos. ¡La emoción está cerca!',
+                'color' => '#7c3aed'
+            ],
+            'in_transit' => [
+                'icon' => '🛫',
+                'title' => 'En tránsito',
+                'message' => 'Tu orden está viajando hacia ti. Muy pronto podrás disfrutar de tu compra.',
+                'color' => '#2563eb'
+            ],
+            'delivered' => [
+                'icon' => '🎉',
+                'title' => '¡Entregado!',
+                'message' => 'Tu orden ha sido entregada. ¡Esperamos que disfrutes tu nueva camiseta! Gracias por confiar en nosotros.',
+                'color' => '#16a34a'
+            ],
+            'cancelled' => [
+                'icon' => '❌',
+                'title' => 'Orden cancelada',
+                'message' => 'Tu orden ha sido cancelada. Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.',
+                'color' => '#dc2626'
+            ],
+            'failed' => [
+                'icon' => '⚠️',
+                'title' => 'Problema con el pago',
+                'message' => 'Hubo un problema al procesar tu pago. Por favor, verifica tu método de pago o contáctanos para ayudarte.',
+                'color' => '#ea580c'
+            ]
+        ];
+
+        $info = $messages[$status] ?? null;
+        
+        if (!$info) {
+            return '';
+        }
+
+        return "
+            <div style='background-color: #f0fdf4; border-left: 4px solid {$info['color']}; padding: 20px; margin: 30px 0; border-radius: 4px;'>
+                <p style='margin: 0 0 10px 0; color: {$info['color']}; font-size: 18px; font-weight: bold;'>
+                    {$info['icon']} {$info['title']}
+                </p>
+                <p style='margin: 0; color: #065f46; font-size: 15px; line-height: 1.6;'>
+                    {$info['message']}
+                </p>
+            </div>
+        ";
     }
 }
