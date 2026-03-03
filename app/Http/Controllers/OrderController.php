@@ -8,6 +8,7 @@ use App\Models\Coupon;
 use App\Models\ProductVariant;
 use App\Services\WompiService;
 use App\Services\NOWPaymentsService;
+use App\Services\MailjetService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -17,11 +18,16 @@ class OrderController extends Controller
 {
     protected WompiService $wompiService;
     protected NOWPaymentsService $nowPaymentsService;
+    protected MailjetService $mailjetService;
 
-    public function __construct(WompiService $wompiService, NOWPaymentsService $nowPaymentsService)
-    {
+    public function __construct(
+        WompiService $wompiService, 
+        NOWPaymentsService $nowPaymentsService,
+        MailjetService $mailjetService
+    ) {
         $this->wompiService = $wompiService;
         $this->nowPaymentsService = $nowPaymentsService;
+        $this->mailjetService = $mailjetService;
     }
 
     public function index(Request $request): JsonResponse
@@ -360,6 +366,17 @@ class OrderController extends Controller
                     ]
                 ], 500);
             }
+        }
+
+        // Enviar correo de confirmación de orden
+        try {
+            $this->mailjetService->sendOrderConfirmation($order);
+        } catch (\Exception $e) {
+            Log::error('Failed to send order confirmation email', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+            // No fallar la creación de la orden si el correo falla
         }
 
         return response()->json([
@@ -802,15 +819,33 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
             'status' => 'required|in:pending,paid,preparing,shipped,in_transit,delivered,cancelled,failed'
         ]);
 
-        $order->update(['status' => $validated['status']]);
+        $oldStatus = $order->status;
+        $newStatus = $validated['status'];
+
+        $order->update(['status' => $newStatus]);
 
         // Update timestamps based on status
-        if ($validated['status'] === 'paid' && !$order->paid_at) {
+        if ($newStatus === 'paid' && !$order->paid_at) {
             $order->update(['paid_at' => now()]);
-        } elseif ($validated['status'] === 'shipped' && !$order->shipped_at) {
+        } elseif ($newStatus === 'shipped' && !$order->shipped_at) {
             $order->update(['shipped_at' => now()]);
-        } elseif ($validated['status'] === 'delivered' && !$order->delivered_at) {
+        } elseif ($newStatus === 'delivered' && !$order->delivered_at) {
             $order->update(['delivered_at' => now()]);
+        }
+
+        // Enviar correo de actualización de estado
+        if ($oldStatus !== $newStatus) {
+            try {
+                $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, $newStatus);
+            } catch (\Exception $e) {
+                Log::error('Failed to send order status update email', [
+                    'order_id' => $order->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $newStatus,
+                    'error' => $e->getMessage()
+                ]);
+                // No fallar la actualización si el correo falla
+            }
         }
 
         return response()->json([
@@ -836,7 +871,18 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
             ], 400);
         }
 
+        $oldStatus = $order->status;
         $order->update(['status' => 'cancelled']);
+
+        // Enviar correo de cancelación
+        try {
+            $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, 'cancelled');
+        } catch (\Exception $e) {
+            Log::error('Failed to send order cancellation email', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',

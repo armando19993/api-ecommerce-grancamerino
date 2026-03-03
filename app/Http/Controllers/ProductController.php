@@ -16,6 +16,23 @@ class ProductController extends Controller
     {
         $query = Product::with(['category', 'team.country', 'team.league', 'images', 'variants.size', 'specialCategories']);
         
+        // Colecciones especiales
+        $isCollection = false;
+        if ($request->has('collection') && !empty($request->collection)) {
+            $collection = $request->collection;
+            $isCollection = true;
+            
+            if ($collection === 'new_arrivals') {
+                // Últimos 50 productos más recientes
+                $query->orderBy('created_at', 'desc');
+            } elseif ($collection === 'best_sellers') {
+                // Productos más vendidos (últimos 50)
+                $query->withCount('orderItems')
+                    ->orderBy('order_items_count', 'desc')
+                    ->orderBy('created_at', 'desc');
+            }
+        }
+        
         // Filtro por categoría
         if ($request->has('category_id') && !empty($request->category_id)) {
             $query->where('category_id', $request->category_id);
@@ -78,19 +95,36 @@ class ProductController extends Controller
             $query->where('price_cop', '<=', $request->max_price_cop);
         }
         
-        // Ordenamiento
-        $sortBy = $request->input('sort_by', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-        
-        // Validar campos de ordenamiento permitidos
-        $allowedSortFields = ['name', 'price_usd', 'price_cop', 'created_at', 'updated_at'];
-        if (in_array($sortBy, $allowedSortFields)) {
-            $query->orderBy($sortBy, $sortOrder);
-        } else {
-            $query->orderBy('created_at', 'desc');
+        // Ordenamiento (solo si no es una colección especial)
+        if (!$isCollection) {
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortOrder = $request->input('sort_order', 'desc');
+            
+            // Validar campos de ordenamiento permitidos
+            $allowedSortFields = ['name', 'price_usd', 'price_cop', 'created_at', 'updated_at'];
+            if (in_array($sortBy, $allowedSortFields)) {
+                $query->orderBy($sortBy, $sortOrder);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
         }
         
-        // Paginación
+        // Paginación (solo si no es una colección especial con límite)
+        if ($isCollection) {
+            // Para colecciones especiales, usar limit si se proporciona, sino 50 por defecto
+            $limit = $request->input('limit', 50);
+            $limit = min($limit, 100); // Máximo 100 items
+            
+            $products = $query->take($limit)->get();
+            
+            return response()->json([
+                'status' => 'success',
+                'data' => $products,
+                'collection' => $request->collection,
+                'total' => $products->count()
+            ]);
+        }
+        
         $perPage = $request->input('per_page', 20);
         $perPage = min($perPage, 100); // Máximo 100 items por página
         

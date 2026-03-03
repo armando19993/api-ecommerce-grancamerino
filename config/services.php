@@ -63,4 +63,11 @@ return [
         'secret' => env('WOOCOMMERCE_SECRET'),
     ],
 
+    'mailjet' => [
+        'key' => env('MAILJET_API_KEY'),
+        'secret' => env('MAILJET_API_SECRET'),
+        'from_email' => env('MAILJET_FROM_EMAIL', env('MAIL_FROM_ADDRESS')),
+        'from_name' => env('MAILJET_FROM_NAME', env('MAIL_FROM_NAME')),
+    ],
+
 ];
