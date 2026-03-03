@@ -1,0 +1,21 @@
+meta {
+  name: Get User Favorites
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/users/{{user_id}}/favorites
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # Get User Favorites
+  
+  Obtiene todos los productos favoritos de un usuario específico.
+}

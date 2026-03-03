@@ -1,0 +1,24 @@
+meta {
+  name: Bulk Delete Users
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/users/bulk-delete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "user_ids": [
+      "019c9bd3-0000-0000-0000-000000000001",
+      "019c9bd3-0000-0000-0000-000000000002"
+    ]
+  }
+}

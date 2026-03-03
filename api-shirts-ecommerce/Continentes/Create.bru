@@ -1,0 +1,30 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{SERVER}}continents
+  body: json
+  auth: bearer
+}
+
+headers {
+  ~Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vYXBpLXNoaXJ0LnRlc3QvYXBpL2xvZ2luIiwiaWF0IjoxNzcxNDQ5MTE3LCJleHAiOjE3NzE2MjE5MTcsIm5iZiI6MTc3MTQ0OTExNywianRpIjoiTDZpemlEVUhiM2xaZ1hmMCIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3Iiwicm9sZSI6ImFkbWluIn0.HkNKm4A0L6reU01d_kSwUJ-Jo-tX2QOPR2MhfPga9w4
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+body:json {
+  {
+    "name": "America"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

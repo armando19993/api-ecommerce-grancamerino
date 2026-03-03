@@ -1,0 +1,18 @@
+meta {
+  name: Test Wompi Signature
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/test-wompi-signature
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reference": "TEST-ORDER-123",
+    "amount": 150000
+  }
+}

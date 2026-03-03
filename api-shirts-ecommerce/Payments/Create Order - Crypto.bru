@@ -1,0 +1,31 @@
+meta {
+  name: Create Order - Crypto
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/orders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "address_id": "{{address_id}}",
+    "payment_gateway": "nowpayments",
+    "crypto_currency": "btc",
+    "items": [
+      {
+        "product_id": "{{product_id}}",
+        "product_variant_id": "{{product_variant_id}}",
+        "quantity": 1
+      }
+    ],
+    "notes": "Test order with crypto payment"
+  }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{SERVER}}countries/019c766c-9f4c-733e-9d69-874ecb7b0d72
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+body:json {
+  {
+    "name": "Venezuela"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

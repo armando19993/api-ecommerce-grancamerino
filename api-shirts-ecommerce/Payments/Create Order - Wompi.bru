@@ -1,0 +1,33 @@
+meta {
+  name: Create Order - Wompi
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/orders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "address_id": "{{address_id}}",
+    "coupon_code": "DISCOUNT10",
+    "payment_gateway": "wompi",
+    "items": [
+      {
+        "product_id": "{{product_id}}",
+        "product_variant_id": "{{product_variant_id}}",
+        "quantity": 2,
+        "customization_name": "MESSI",
+        "customization_number": "10"
+      }
+    ],
+    "notes": "Test order with Wompi payment - will redirect to production URL"
+  }
+}

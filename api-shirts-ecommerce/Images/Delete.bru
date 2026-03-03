@@ -1,0 +1,38 @@
+meta {
+  name: Delete Image
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/images/delete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "public_id": "products/abc123"
+  }
+}
+
+docs {
+  # Delete Image from Cloudinary
+  
+  Este endpoint elimina una imagen de Cloudinary usando su public_id.
+  
+  ## Parámetros
+  - `public_id` (required): ID público de la imagen en Cloudinary
+  
+  ## Respuesta Exitosa
+  ```json
+  {
+    "status": "success",
+    "message": "Imagen eliminada correctamente"
+  }
+  ```
+}

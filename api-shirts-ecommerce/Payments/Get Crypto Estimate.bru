@@ -1,0 +1,18 @@
+meta {
+  name: Get Crypto Estimate
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/crypto-estimate
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "amount": 150.00,
+    "currency": "btc"
+  }
+}

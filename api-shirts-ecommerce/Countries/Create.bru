@@ -1,0 +1,27 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{SERVER}}countries
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+body:json {
+  {
+    "name": "Venezuela",
+    "continent_id": "019c72a8-7808-70ea-b82a-8f2e6b96b4a9"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

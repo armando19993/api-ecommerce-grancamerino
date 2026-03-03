@@ -1,0 +1,26 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{SERVER}}continents/019c729c-165b-724f-8093-586c1b69b90c
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+body:json {
+  {
+    "name": "America 2"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

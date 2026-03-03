@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "api-shirts-ecommerce",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

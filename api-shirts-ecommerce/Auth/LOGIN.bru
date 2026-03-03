@@ -1,0 +1,27 @@
+meta {
+  name: LOGIN
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{SERVER}}/login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "admin@admin.com",
+    "password": "123456"
+  }
+}
+
+vars:pre-request {
+  SERVER: http://api-shirt.test/api
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

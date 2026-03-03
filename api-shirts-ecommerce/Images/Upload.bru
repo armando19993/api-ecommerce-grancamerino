@@ -1,0 +1,44 @@
+meta {
+  name: Upload Image
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/images/upload
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:multipart-form {
+  image: @file(/path/to/your/image.jpg)
+  type: product
+}
+
+docs {
+  # Upload Image to Cloudinary
+  
+  Este endpoint sube una imagen a Cloudinary y devuelve la URL.
+  
+  ## Parámetros
+  - `image` (required): Archivo de imagen (jpeg, png, jpg, gif, webp)
+  - `type` (optional): Tipo de imagen (category, league, country, team, product)
+  - `folder` (optional): Carpeta personalizada en Cloudinary
+  
+  ## Respuesta Exitosa
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "url": "https://res.cloudinary.com/...",
+      "public_id": "products/abc123",
+      "width": 1200,
+      "height": 1200
+    }
+  }
+  ```
+}

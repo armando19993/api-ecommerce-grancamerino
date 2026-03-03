@@ -1,0 +1,23 @@
+meta {
+  name: Toggle Admin Status
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{base_url}}/users/{{user_id}}/toggle-admin
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # Toggle Admin Status
+  
+  Cambia el estado de administrador de un usuario (de admin a usuario normal o viceversa).
+  
+  **Nota:** No puedes cambiar tu propio estado de administrador.
+}

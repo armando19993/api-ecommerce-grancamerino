@@ -1,0 +1,20 @@
+meta {
+  name: Get One
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{SERVER}}continents/019c729c-165b-724f-8093-586c1b69b90c
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

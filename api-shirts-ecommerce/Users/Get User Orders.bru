@@ -1,0 +1,21 @@
+meta {
+  name: Get User Orders
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/users/{{user_id}}/orders
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # Get User Orders
+  
+  Obtiene todas las órdenes de un usuario específico con sus items y productos.
+}

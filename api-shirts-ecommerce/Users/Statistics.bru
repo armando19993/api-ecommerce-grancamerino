@@ -1,0 +1,26 @@
+meta {
+  name: User Statistics
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/users/statistics
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # User Statistics
+  
+  Obtiene estadísticas generales de usuarios:
+  - Total de usuarios
+  - Total de administradores
+  - Total de clientes
+  - Usuarios registrados en los últimos 30 días
+  - Usuarios con órdenes
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Get User Addresses
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/users/{{user_id}}/addresses
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # Get User Addresses
+  
+  Obtiene todas las direcciones de un usuario específico.
+}
