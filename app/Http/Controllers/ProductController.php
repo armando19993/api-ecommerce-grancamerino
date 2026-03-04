@@ -109,30 +109,25 @@ class ProductController extends Controller
             }
         }
         
-        // Paginación (solo si no es una colección especial con límite)
-        if ($isCollection) {
-            // Para colecciones especiales, usar limit si se proporciona, sino 50 por defecto
-            $limit = $request->input('limit', 50);
-            $limit = min($limit, 100); // Máximo 100 items
-            
-            $products = $query->take($limit)->get();
-            
-            return response()->json([
-                'status' => 'success',
-                'data' => $products,
-                'collection' => $request->collection,
-                'total' => $products->count()
-            ]);
+        // Determinar el límite de resultados
+        // Prioridad: limit > per_page > default (20)
+        $limit = $request->input('limit', $request->input('per_page', 20));
+        $limit = min($limit, 100); // Máximo 100 items
+        
+        // Si es una colección especial, usar límite por defecto de 50 si no se especifica
+        if ($isCollection && !$request->has('limit') && !$request->has('per_page')) {
+            $limit = 50;
         }
         
-        $perPage = $request->input('per_page', 20);
-        $perPage = min($perPage, 100); // Máximo 100 items por página
-        
-        $products = $query->paginate($perPage);
+        // Obtener productos con límite
+        $products = $query->take($limit)->get();
         
         return response()->json([
             'status' => 'success',
-            'data' => $products
+            'data' => $products,
+            'total' => $products->count(),
+            'limit' => $limit,
+            'collection' => $isCollection ? $request->collection : null
         ]);
     }
 

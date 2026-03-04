@@ -44,6 +44,7 @@ Route::get('/leagues/{league}', [LeagueController::class, 'show']);
 Route::post('/orders/{order}/confirm-payment', [OrderController::class, 'confirmPayment']);
 Route::post('/webhooks/wompi', [OrderController::class, 'wompiWebhook'])->withoutMiddleware(['auth:api'])->name('wompi.webhook');
 Route::post('/webhooks/nowpayments', [OrderController::class, 'nowPaymentsWebhook'])->withoutMiddleware(['auth:api'])->name('nowpayments.webhook');
+Route::post('/webhooks/stripe', [OrderController::class, 'stripeWebhook'])->withoutMiddleware(['auth:api'])->name('stripe.webhook');
 Route::get('/crypto-currencies', [OrderController::class, 'getCryptoCurrencies']);
 Route::post('/crypto-estimate', [OrderController::class, 'getCryptoEstimate']);
 Route::post('/test-wompi-signature', [OrderController::class, 'testWompiSignature']);
