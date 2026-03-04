@@ -187,6 +187,18 @@ class StripeService
         $lineItems = [];
 
         foreach ($items as $item) {
+            $unitAmount = (int)($item['unit_price'] * 100); // Stripe usa centavos
+            
+            // Stripe no permite unit_amount negativo en line items
+            // Los descuentos deben manejarse de otra forma
+            if ($unitAmount < 0) {
+                Log::warning('Stripe: Skipping negative line item (discounts not supported as line items)', [
+                    'item_name' => $item['name'],
+                    'unit_price' => $item['unit_price']
+                ]);
+                continue;
+            }
+            
             $lineItems[] = [
                 'price_data' => [
                     'currency' => $currency,
@@ -194,7 +206,7 @@ class StripeService
                         'name' => $item['name'],
                         'description' => $item['description'] ?? null,
                     ],
-                    'unit_amount' => (int)($item['unit_price'] * 100), // Stripe usa centavos
+                    'unit_amount' => $unitAmount,
                 ],
                 'quantity' => $item['quantity'],
             ];

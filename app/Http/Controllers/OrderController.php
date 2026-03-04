@@ -181,8 +181,17 @@ class OrderController extends Controller
             $coupon->increment('used_count');
         }
 
+        // Calcular cantidad total de artículos
+        $totalQuantity = 0;
+        foreach ($validated['items'] as $item) {
+            $totalQuantity += $item['quantity'];
+        }
+
         $taxAmount = 0; // Sin IVA (0%)
-        $shippingAmount = 0; // Envío gratis
+        
+        // Shipping: $5 USD solo si hay exactamente 1 artículo, gratis si hay más
+        $shippingAmount = ($totalQuantity === 1) ? 5.00 : 0.00;
+        
         $totalAmount = max(0, $subtotal + $taxAmount + $shippingAmount - $discountAmount);
         
         // Redondear a 2 decimales para evitar problemas de precisión
@@ -195,6 +204,8 @@ class OrderController extends Controller
             'shipping_amount' => $shippingAmount,
             'discount_amount' => $discountAmount,
             'total_amount' => $totalAmount,
+            'total_quantity' => $totalQuantity,
+            'shipping_applied' => $totalQuantity === 1 ? 'yes' : 'no',
             'total_amount_type' => gettype($totalAmount),
         ]);
 
@@ -418,7 +429,37 @@ class OrderController extends Controller
                 ];
             }
 
+            // Agregar shipping como line item si aplica
+            if ($shippingAmount > 0) {
+                $stripeItems[] = [
+                    'name' => 'Envío',
+                    'description' => 'Cargo por envío',
+                    'unit_price' => $shippingAmount,
+                    'quantity' => 1
+                ];
+            }
+
+            // Si hay descuento, agregarlo como line item con precio negativo
+            // Nota: Stripe maneja esto correctamente en checkout sessions
+            if ($discountAmount > 0) {
+                $stripeItems[] = [
+                    'name' => 'Descuento',
+                    'description' => 'Cupón aplicado',
+                    'unit_price' => -$discountAmount,
+                    'quantity' => 1
+                ];
+            }
+
             $lineItems = $this->stripeService->formatLineItems($stripeItems, 'usd');
+
+            Log::info('Stripe: Line items prepared', [
+                'order_id' => $order->id,
+                'items_count' => count($stripeItems),
+                'subtotal' => $subtotal,
+                'shipping' => $shippingAmount,
+                'discount' => $discountAmount,
+                'total' => $totalAmount,
+            ]);
 
             Log::info('Stripe: Creating checkout session', [
                 'order_id' => $order->id,
