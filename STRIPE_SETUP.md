@@ -41,8 +41,42 @@ Stripe es una plataforma de pagos que permite aceptar tarjetas de crédito/débi
 4. Selecciona los eventos:
    - `checkout.session.completed`
    - `checkout.session.expired`
+   - `payment_intent.succeeded`
    - `payment_intent.payment_failed`
-5. Copia el **Signing secret** (comienza con `whsec_`)
+5. Click en **Add endpoint**
+6. Una vez creado, click en el endpoint
+7. En la sección **Signing secret**, click en **Reveal**
+8. Copia el **Signing secret** (comienza con `whsec_`)
+
+**IMPORTANTE**: 
+- El webhook secret es diferente para cada endpoint
+- El webhook secret de la CLI de Stripe (`stripe listen`) es diferente al del Dashboard
+- Nunca uses el webhook secret de test en producción o viceversa
+
+### 4. Testing Local con Stripe CLI (Opcional)
+
+Para probar webhooks localmente:
+
+```bash
+# Instalar Stripe CLI
+# https://stripe.com/docs/stripe-cli
+
+# Login
+stripe login
+
+# Escuchar webhooks y reenviarlos a tu servidor local
+stripe listen --forward-to http://localhost:8000/api/webhooks/stripe
+
+# Esto mostrará un webhook secret temporal (whsec_...)
+# Usa este secret en tu .env local
+```
+
+El CLI mostrará algo como:
+```
+> Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxx
+```
+
+Usa ese secret en tu `.env` local para testing.
 
 ### 4. Configurar variables de entorno
 
@@ -54,6 +88,12 @@ STRIPE_SECRET_KEY=sk_test_tu_secret_key_aqui
 STRIPE_PUBLISHABLE_KEY=pk_test_tu_publishable_key_aqui
 STRIPE_WEBHOOK_SECRET=whsec_tu_webhook_secret_aqui
 ```
+
+**IMPORTANTE**: 
+- Asegúrate de copiar el webhook secret completo, incluyendo el prefijo `whsec_`
+- El webhook secret debe coincidir con el endpoint configurado en el Dashboard
+- Si usas Stripe CLI para testing local, usa el secret que muestra la CLI
+- Nunca compartas tu webhook secret públicamente
 
 ## Uso
 
@@ -123,6 +163,12 @@ POST /api/orders
 Se dispara cuando el cliente completa el pago exitosamente.
 - Actualiza el estado de la orden a `paid`
 - Registra información del pago
+- Envía correo de confirmación al cliente
+
+#### payment_intent.succeeded
+Se dispara cuando el pago se procesa exitosamente (alternativa a checkout.session.completed).
+- Actualiza el estado de la orden a `paid`
+- Registra información del payment intent
 - Envía correo de confirmación al cliente
 
 #### checkout.session.expired
@@ -224,3 +270,79 @@ Antes de ir a producción:
 - [API Reference](https://stripe.com/docs/api)
 - [Checkout Session](https://stripe.com/docs/payments/checkout)
 - [Webhooks](https://stripe.com/docs/webhooks)
+
+
+## Troubleshooting
+
+### Error: "Invalid signature"
+
+Este error significa que la verificación de la firma del webhook falló. Posibles causas:
+
+1. **Webhook secret incorrecto**
+   - Verifica que `STRIPE_WEBHOOK_SECRET` en `.env` sea correcto
+   - Debe comenzar con `whsec_`
+   - Copia el secret desde el Dashboard de Stripe (Developers > Webhooks > tu endpoint > Reveal signing secret)
+   - Si usas Stripe CLI, usa el secret que muestra `stripe listen`
+
+2. **Endpoint incorrecto**
+   - Asegúrate de que la URL del webhook en Stripe apunte a `https://tu-dominio.com/api/webhooks/stripe`
+   - Verifica que no haya middleware que modifique el request body antes del webhook
+
+3. **Request body modificado**
+   - El body debe ser el raw request body sin modificaciones
+   - Laravel lo maneja correctamente por defecto
+   - No uses `$request->all()` o `$request->json()` antes de verificar la firma
+
+4. **Timestamp muy antiguo**
+   - Stripe rechaza eventos con más de 5 minutos de antigüedad
+   - Verifica que la hora del servidor sea correcta
+
+### Verificar configuración
+
+Revisa los logs en `storage/logs/laravel.log` para ver detalles de la verificación:
+
+```
+Stripe: Signature verification details
+- timestamp: 1772634780
+- expected_signature: abc123...
+- computed_signature: abc123...
+- signatures_match: true/false
+```
+
+Si `signatures_match: false`, el webhook secret es incorrecto.
+
+### Testing sin verificación (solo desarrollo)
+
+Si necesitas probar sin verificación (NO USAR EN PRODUCCIÓN):
+
+1. Deja `STRIPE_WEBHOOK_SECRET` vacío en `.env`
+2. Asegúrate de que `APP_ENV=local`
+3. El webhook aceptará requests sin verificar la firma
+
+**⚠️ NUNCA hagas esto en producción**
+
+### Verificar que el webhook secret es correcto
+
+1. Ve a Stripe Dashboard > Developers > Webhooks
+2. Click en tu endpoint
+3. Click en "Reveal" en la sección "Signing secret"
+4. Copia el valor completo (debe empezar con `whsec_`)
+5. Pégalo en tu `.env` como `STRIPE_WEBHOOK_SECRET=whsec_...`
+6. Reinicia tu servidor para que cargue la nueva variable
+
+### Algoritmo de verificación de Stripe
+
+Stripe usa HMAC-SHA256 para firmar webhooks:
+
+1. Construye el string firmado: `timestamp.payload`
+2. Calcula HMAC-SHA256 del string usando el webhook secret
+3. Compara la firma calculada con la firma en el header `Stripe-Signature`
+
+El header `Stripe-Signature` tiene este formato:
+```
+t=1492774577,v1=5257a869e7ecebeda32affa62cdca3fa51cad7e77a0e56ff536d0ce8e108d8bd
+```
+
+Donde:
+- `t` = timestamp Unix cuando se generó el evento
+- `v1` = firma HMAC-SHA256 del string `timestamp.payload`

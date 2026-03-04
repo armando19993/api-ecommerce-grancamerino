@@ -102,9 +102,13 @@ class StripeService
      */
     public function verifyWebhookSignature(string $payload, string $signature): bool
     {
+        // Si no hay webhook secret configurado, permitir en desarrollo (NO USAR EN PRODUCCIÓN)
+        if (empty($this->webhookSecret)) {
+            Log::warning('Stripe: No webhook secret configured - signature verification skipped');
+            return config('app.env') === 'local' || config('app.env') === 'development';
+        }
+
         try {
-            $expectedSignature = hash_hmac('sha256', $payload, $this->webhookSecret);
-            
             // Stripe envía la firma en formato: t=timestamp,v1=signature
             $signatureParts = [];
             foreach (explode(',', $signature) as $part) {
@@ -114,16 +118,62 @@ class StripeService
                 }
             }
 
-            if (!isset($signatureParts['v1'])) {
-                Log::warning('Stripe: No v1 signature found');
+            if (!isset($signatureParts['t']) || !isset($signatureParts['v1'])) {
+                Log::warning('Stripe: Missing timestamp or v1 signature', [
+                    'signature_header' => $signature,
+                    'parsed_parts' => $signatureParts
+                ]);
                 return false;
             }
 
-            return hash_equals($expectedSignature, $signatureParts['v1']);
+            $timestamp = $signatureParts['t'];
+            $expectedSignature = $signatureParts['v1'];
+
+            // Construir el string firmado: timestamp.payload
+            $signedPayload = $timestamp . '.' . $payload;
+
+            // Calcular la firma esperada
+            $computedSignature = hash_hmac('sha256', $signedPayload, $this->webhookSecret);
+
+            // Log para debugging
+            Log::info('Stripe: Signature verification details', [
+                'timestamp' => $timestamp,
+                'expected_signature' => $expectedSignature,
+                'computed_signature' => $computedSignature,
+                'signed_payload_length' => strlen($signedPayload),
+                'webhook_secret_length' => strlen($this->webhookSecret),
+                'signatures_match' => hash_equals($computedSignature, $expectedSignature)
+            ]);
+
+            // Comparar las firmas
+            if (!hash_equals($computedSignature, $expectedSignature)) {
+                Log::warning('Stripe: Signature mismatch', [
+                    'expected' => $expectedSignature,
+                    'computed' => $computedSignature
+                ]);
+                return false;
+            }
+
+            // Verificar que el timestamp no sea muy antiguo (5 minutos)
+            $currentTime = time();
+            $timeDifference = abs($currentTime - (int)$timestamp);
+            
+            if ($timeDifference > 300) {
+                Log::warning('Stripe: Timestamp too old', [
+                    'timestamp' => $timestamp,
+                    'current_time' => $currentTime,
+                    'difference_seconds' => $timeDifference
+                ]);
+                return false;
+            }
+
+            Log::info('Stripe: Signature verification successful');
+            return true;
 
         } catch (\Exception $e) {
             Log::error('Stripe: Error verifying webhook signature', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return false;
         }

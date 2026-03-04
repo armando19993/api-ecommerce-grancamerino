@@ -938,6 +938,46 @@ public function nowPaymentsWebhook(Request $request): JsonResponse
                 }
                 break;
 
+            case 'payment_intent.succeeded':
+                $paymentIntent = $event['data']['object'];
+                $orderId = $paymentIntent['metadata']['order_id'] ?? null;
+
+                if ($orderId) {
+                    $order = Order::find($orderId);
+                    
+                    if ($order && $order->status === 'pending') {
+                        $oldStatus = $order->status;
+                        
+                        $order->update([
+                            'status' => 'paid',
+                            'payment_data' => array_merge($order->payment_data ?? [], [
+                                'payment_intent' => $paymentIntent['id'],
+                                'payment_status' => 'succeeded',
+                                'amount_received' => $paymentIntent['amount_received'],
+                                'currency' => $paymentIntent['currency'],
+                            ]),
+                            'paid_at' => now(),
+                        ]);
+
+                        Log::info('Stripe: Order marked as paid (payment_intent.succeeded)', [
+                            'order_id' => $order->id,
+                            'payment_intent' => $paymentIntent['id'],
+                            'amount' => $paymentIntent['amount_received'],
+                        ]);
+
+                        // Enviar correo de confirmación de pago
+                        try {
+                            $this->mailjetService->sendOrderStatusUpdate($order, $oldStatus, 'paid');
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send Stripe payment confirmation email', [
+                                'order_id' => $order->id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                }
+                break;
+
             default:
                 Log::info('Stripe: Unhandled event type', ['type' => $event['type']]);
         }
