@@ -146,7 +146,21 @@ class OrderController extends Controller
                 $unitPrice = $productVariant->product->price_usd;
             }
             
-            $totalPrice = $unitPrice * $item['quantity'];
+            // Cargo adicional por personalización: $5 USD por unidad personalizada
+            $customizationFee = 0;
+            $hasCustomization = !empty($item['customization_name']) || !empty($item['customization_number']);
+            
+            if ($hasCustomization) {
+                // $5 USD por cada unidad personalizada
+                $customizationFee = 5.00 * $item['quantity'];
+                
+                // Si es Wompi (COP), convertir el fee (asumiendo tasa aproximada de 1 USD = 4000 COP)
+                if ($validated['payment_gateway'] === 'wompi') {
+                    $customizationFee = 20000 * $item['quantity']; // 20,000 COP por unidad
+                }
+            }
+            
+            $totalPrice = ($unitPrice * $item['quantity']) + $customizationFee;
             $subtotal += $totalPrice;
 
             $orderItems[] = [
@@ -159,6 +173,7 @@ class OrderController extends Controller
                 'total_price' => $totalPrice,
                 'customization_name' => $item['customization_name'] ?? null,
                 'customization_number' => $item['customization_number'] ?? null,
+                'customization_fee' => $hasCustomization ? ($customizationFee / $item['quantity']) : 0, // Fee por unidad
             ];
         }
 
@@ -410,23 +425,37 @@ class OrderController extends Controller
             // Preparar line items para Stripe
             $stripeItems = [];
             foreach ($orderItems as $item) {
+                $hasCustomization = !empty($item['customization_name']) || !empty($item['customization_number']);
+                
+                // Descripción del producto
                 $description = "Talla: {$item['product_size']}";
-                if ($item['customization_name'] || $item['customization_number']) {
-                    $description .= " | ";
+                if ($hasCustomization) {
+                    $description .= " | Personalizado";
                     if ($item['customization_name']) {
-                        $description .= "Nombre: {$item['customization_name']} ";
+                        $description .= " - Nombre: {$item['customization_name']}";
                     }
                     if ($item['customization_number']) {
-                        $description .= "Número: {$item['customization_number']}";
+                        $description .= " - Número: {$item['customization_number']}";
                     }
                 }
                 
+                // Precio base del producto
                 $stripeItems[] = [
                     'name' => $item['product_name'],
                     'description' => $description,
                     'unit_price' => $item['unit_price'],
                     'quantity' => $item['quantity']
                 ];
+                
+                // Si tiene personalización, agregar el cargo como line item separado
+                if ($hasCustomization && isset($item['customization_fee']) && $item['customization_fee'] > 0) {
+                    $stripeItems[] = [
+                        'name' => "Personalización - {$item['product_name']}",
+                        'description' => 'Cargo por personalización de nombre/número',
+                        'unit_price' => $item['customization_fee'],
+                        'quantity' => $item['quantity']
+                    ];
+                }
             }
 
             // Agregar shipping como line item si aplica

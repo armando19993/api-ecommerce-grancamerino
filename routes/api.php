@@ -49,6 +49,8 @@ Route::get('/crypto-currencies', [OrderController::class, 'getCryptoCurrencies']
 Route::post('/crypto-estimate', [OrderController::class, 'getCryptoEstimate']);
 Route::post('/test-wompi-signature', [OrderController::class, 'testWompiSignature']);
 
+Route::post('/coupons/validate', [CouponController::class, 'validateCoupon']);
+
 
 Route::get('/import/wc/{category_id}/{team_id}', [ImportController::class, 'runImport']);
 
@@ -83,7 +85,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/coupons/{coupon}', [CouponController::class, 'show']);
     Route::put('/coupons/{coupon}', [CouponController::class, 'update']);
     Route::delete('/coupons/{coupon}', [CouponController::class, 'destroy']);
-    Route::post('/coupons/validate', [CouponController::class, 'validateCoupon']);
     
     // Orders
     Route::get('/orders', [OrderController::class, 'index']);

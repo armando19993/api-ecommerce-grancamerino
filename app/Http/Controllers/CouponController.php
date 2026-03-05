@@ -15,6 +15,11 @@ class CouponController extends Controller
                 $query->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());
             })
+            ->withCount('orders')
+            ->with(['orders' => function ($query) {
+                $query->select('id', 'coupon_id', 'order_number', 'total_amount', 'discount_amount', 'created_at')
+                    ->orderBy('created_at', 'desc');
+            }])
             ->get();
         
         return response()->json([
