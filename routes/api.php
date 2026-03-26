@@ -20,6 +20,8 @@ use App\Http\Controllers\ImportController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public endpoints
 Route::get('/products', [ProductController::class, 'index']);

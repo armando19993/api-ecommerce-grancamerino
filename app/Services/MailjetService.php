@@ -173,6 +173,93 @@ class MailjetService
         );
     }
 
+    public function sendPasswordResetEmail($user, string $resetUrl): bool
+    {
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$user->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;'>
+                Recibimos una solicitud para restablecer la contraseña de tu cuenta. Si no fuiste tú, puedes ignorar este correo.
+            </p>
+
+            <!-- CTA Button -->
+            <table width='100%' cellpadding='0' cellspacing='0' style='margin: 30px 0;'>
+                <tr>
+                    <td align='center'>
+                        <a href='{$resetUrl}'
+                           style='display: inline-block; background: linear-gradient(135deg, #075e38 0%, #0a7d4a 100%);
+                                  color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold;
+                                  padding: 16px 40px; border-radius: 8px; letter-spacing: 0.5px;'>
+                            🔑 Restablecer contraseña
+                        </a>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Expiry notice -->
+            <div style='background-color: #fffbeb; border: 1px solid #fbbf24; padding: 15px 20px; border-radius: 6px; margin: 30px 0;'>
+                <p style='margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;'>
+                    ⏱️ <strong>Este enlace expira en 60 minutos.</strong> Si ya expiró, solicita uno nuevo desde la pantalla de inicio de sesión.
+                </p>
+            </div>
+
+            <!-- Fallback URL -->
+            <p style='color: #9ca3af; font-size: 12px; line-height: 1.6; margin: 20px 0 0 0;'>
+                Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                <span style='color: #075e38; word-break: break-all;'>{$resetUrl}</span>
+            </p>
+        ";
+
+        $htmlContent = $this->getEmailTemplate($content, 'Restablecer contraseña');
+
+        return $this->sendEmail(
+            $user->email,
+            $user->name,
+            'Restablece tu contraseña - Gran Camerino',
+            $htmlContent
+        );
+    }
+
+    public function sendPasswordChangedEmail($user): bool
+    {
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$user->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 30px 0;'>
+                Tu contraseña ha sido actualizada exitosamente.
+            </p>
+
+            <!-- Success box -->
+            <div style='background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; padding: 30px; margin: 30px 0; text-align: center;'>
+                <div style='font-size: 48px; margin-bottom: 15px;'>✅</div>
+                <p style='color: #065f46; font-size: 18px; font-weight: bold; margin: 0;'>¡Contraseña actualizada!</p>
+                <p style='color: #4b5563; font-size: 14px; margin: 10px 0 0 0;'>Ya puedes iniciar sesión con tu nueva contraseña.</p>
+            </div>
+
+            <!-- Security warning -->
+            <div style='background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px 20px; border-radius: 4px; margin: 30px 0;'>
+                <p style='margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;'>
+                    🔒 <strong>¿No fuiste tú?</strong> Si no realizaste este cambio, contacta a nuestro equipo de soporte de inmediato.
+                </p>
+            </div>
+
+            <p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0;'>
+                Por seguridad, todas las sesiones activas han sido invalidadas. Inicia sesión nuevamente.
+            </p>
+        ";
+
+        $htmlContent = $this->getEmailTemplate($content, 'Contraseña actualizada');
+
+        return $this->sendEmail(
+            $user->email,
+            $user->name,
+            'Tu contraseña fue actualizada - Gran Camerino',
+            $htmlContent
+        );
+    }
+
     public function sendWelcomeEmail($user)
     {
         $content = "
