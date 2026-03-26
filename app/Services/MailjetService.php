@@ -173,6 +173,74 @@ class MailjetService
         );
     }
 
+    public function sendNewsletterWelcomeEmail($subscriber, $coupon): bool
+    {
+        $content = "
+            <p style='color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;'>
+                Hola <strong style='color: #075e38;'>{$subscriber->name}</strong>,
+            </p>
+            <p style='color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 10px 0;'>
+                ¡Gracias por suscribirte al newsletter de Gran Camerino! Como bienvenida, te regalamos un cupón exclusivo de descuento para tu próxima compra.
+            </p>
+
+            <!-- Coupon Box -->
+            <table width='100%' cellpadding='0' cellspacing='0' style='margin: 35px 0;'>
+                <tr>
+                    <td align='center'>
+                        <div style='background: linear-gradient(135deg, #075e38 0%, #0a7d4a 100%);
+                                    border-radius: 12px; padding: 35px 30px; text-align: center;
+                                    box-shadow: 0 4px 15px rgba(7,94,56,0.3);'>
+                            <p style='color: rgba(255,255,255,0.8); font-size: 13px; letter-spacing: 2px;
+                                      text-transform: uppercase; margin: 0 0 12px 0;'>Tu cupón de descuento</p>
+                            <div style='background: rgba(255,255,255,0.15); border: 2px dashed rgba(255,255,255,0.5);
+                                        border-radius: 8px; padding: 18px 30px; display: inline-block; margin: 0 0 15px 0;'>
+                                <span style='color: #ffffff; font-size: 32px; font-weight: bold;
+                                             letter-spacing: 4px; font-family: monospace;'>{$coupon->code}</span>
+                            </div>
+                            <p style='color: #ffffff; font-size: 22px; font-weight: bold; margin: 0 0 8px 0;'>
+                                🎉 5% de descuento
+                            </p>
+                            <p style='color: rgba(255,255,255,0.75); font-size: 13px; margin: 0;'>
+                                Válido para una sola compra · Sin monto mínimo
+                            </p>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- How to use -->
+            <div style='background-color: #f0fdf4; border-radius: 8px; padding: 25px; margin: 0 0 30px 0;'>
+                <h3 style='color: #075e38; font-size: 16px; margin: 0 0 15px 0;'>¿Cómo usar tu cupón?</h3>
+                <ol style='color: #4b5563; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px;'>
+                    <li>Elige tu camiseta favorita en nuestra tienda</li>
+                    <li>Agrega el producto al carrito</li>
+                    <li>Ingresa el código <strong style='color: #075e38;'>{$coupon->code}</strong> al finalizar la compra</li>
+                    <li>¡Disfruta tu descuento!</li>
+                </ol>
+            </div>
+
+            <div style='background-color: #fffbeb; border: 1px solid #fbbf24; padding: 12px 18px;
+                        border-radius: 6px; margin-bottom: 20px;'>
+                <p style='margin: 0; color: #92400e; font-size: 13px;'>
+                    ⚠️ Este cupón es de <strong>un solo uso</strong> y está asociado a tu suscripción.
+                </p>
+            </div>
+
+            <p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0;'>
+                Mantente atento a nuestro newsletter, te enviaremos las últimas novedades, lanzamientos y promociones exclusivas. ⚽
+            </p>
+        ";
+
+        $htmlContent = $this->getEmailTemplate($content, '¡Bienvenido al Newsletter!');
+
+        return $this->sendEmail(
+            $subscriber->email,
+            $subscriber->name,
+            '¡Tu cupón de bienvenida está aquí! - Gran Camerino',
+            $htmlContent
+        );
+    }
+
     public function sendPasswordResetEmail($user, string $resetUrl): bool
     {
         $content = "

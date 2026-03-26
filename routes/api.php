@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
@@ -22,6 +23,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe']);
 
 // Public endpoints
 Route::get('/products', [ProductController::class, 'index']);
@@ -160,4 +162,7 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::get('/users/{user}/orders', [UserController::class, 'orders']);
     Route::get('/users/{user}/addresses', [UserController::class, 'addresses']);
     Route::get('/users/{user}/favorites', [UserController::class, 'favorites']);
+
+    // Newsletter
+    Route::get('/newsletter/subscribers', [NewsletterController::class, 'index']);
 });
