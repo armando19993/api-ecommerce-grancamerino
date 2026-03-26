@@ -437,12 +437,18 @@ class ProductController extends Controller
     public function addImage(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'url' => 'required|url',
+            'url'        => 'required|url',
             'is_primary' => 'boolean',
         ]);
 
         if ($validated['is_primary'] ?? false) {
             $product->images()->update(['is_primary' => false]);
+            $validated['sort_order'] = 0;
+            // Shift existing images up
+            $product->images()->increment('sort_order');
+        } else {
+            $maxOrder = $product->images()->max('sort_order') ?? -1;
+            $validated['sort_order'] = $maxOrder + 1;
         }
 
         $image = $product->images()->create($validated);
@@ -485,12 +491,54 @@ class ProductController extends Controller
             ], 404);
         }
 
-        $product->images()->update(['is_primary' => false]);
-        $image->update(['is_primary' => true]);
+        // Move all others up by 1, set this one to 0
+        $product->images()->where('id', '!=', $image->id)->update(['is_primary' => false]);
+        $product->images()->where('id', '!=', $image->id)->increment('sort_order');
+        $image->update(['is_primary' => true, 'sort_order' => 0]);
 
         return response()->json([
             'status' => 'success',
-            'data' => $image
+            'data' => $image->fresh()
+        ]);
+    }
+
+    /**
+     * Reorder images for a product.
+     * Receives an ordered array of image IDs and assigns sort_order accordingly.
+     * The first ID in the array becomes the primary image (sort_order = 0).
+     */
+    public function reorderImages(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'image_ids'   => 'required|array|min:1',
+            'image_ids.*' => 'required|uuid',
+        ]);
+
+        $imageIds = $validated['image_ids'];
+
+        // Verify all images belong to this product
+        $count = $product->images()->whereIn('id', $imageIds)->count();
+        if ($count !== count($imageIds)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'One or more images do not belong to this product',
+            ], 422);
+        }
+
+        // Reset all images of this product first
+        $product->images()->update(['is_primary' => false]);
+
+        foreach ($imageIds as $index => $id) {
+            $product->images()->where('id', $id)->update([
+                'sort_order' => $index,
+                'is_primary' => $index === 0,
+            ]);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Images reordered successfully',
+            'data'    => $product->images()->get(),
         ]);
     }
 

@@ -109,6 +109,7 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::post('/products/{product}/images', [ProductController::class, 'addImage']);
     Route::delete('/products/{product}/images/{image}', [ProductController::class, 'removeImage']);
     Route::patch('/products/{product}/images/{image}/primary', [ProductController::class, 'setPrimaryImage']);
+    Route::patch('/products/{product}/images/reorder', [ProductController::class, 'reorderImages']);
     
     // Product variants management
     Route::post('/products/{product}/variants', [ProductController::class, 'addVariant']);
