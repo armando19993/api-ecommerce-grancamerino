@@ -15,6 +15,7 @@ class NewsletterSubscriber extends Model
 
     protected $fillable = [
         'name',
+        'phone',
         'email',
         'coupon_code',
     ];

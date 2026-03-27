@@ -19,6 +19,7 @@ class NewsletterController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name'  => 'required|string|max:255',
+            'phone' => 'nullable|string|max:30',
             'email' => 'required|email|max:255|unique:newsletter_subscribers,email',
         ]);
 
@@ -44,6 +45,7 @@ class NewsletterController extends Controller
 
         $subscriber = NewsletterSubscriber::create([
             'name'        => $request->name,
+            'phone'       => $request->phone,
             'email'       => $request->email,
             'coupon_code' => $code,
         ]);
