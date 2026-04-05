@@ -157,17 +157,9 @@ class OrderController extends Controller
                     $item['product_variant_id']
                 );
 
-                // Usar el precio efectivo según la pasarela de pago.
-
-                // price_cop = precio con descuento (COP) → Wompi
-
-                // price_usd = precio base (USD) → Stripe, NOWPayments
-
-                if ($validated['payment_gateway'] === 'wompi') {
-                    $unitPrice = $productVariant->product->getEffectivePriceCop();
-                } else {
-                    $unitPrice = $productVariant->product->getEffectivePriceUsd();
-                }
+                // Precio efectivo: si tiene descuento (price_cop > 0), se cobra ese; sino price_usd.
+                // Aplica para todas las pasarelas (Wompi, Stripe, NOWPayments).
+                $unitPrice = $productVariant->product->getEffectivePrice();
 
                 // Cargo adicional por personalización: $5 USD por unidad personalizada
 

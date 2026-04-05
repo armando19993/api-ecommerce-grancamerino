@@ -43,14 +43,20 @@ class Product extends Model
         return $this->belongsTo(Size::class);
     }
 
-    public function getEffectivePriceUsd(): float
+    /**
+     * Retorna el precio efectivo a cobrar en USD.
+     * Si el producto tiene precio con descuento (price_cop > 0), ese es el precio a cobrar.
+     * De lo contrario, se usa el precio normal (price_usd).
+     */
+    public function getEffectivePrice(): float
     {
-        return (float) $this->price_usd;
+        $discountPrice = (float) $this->price_cop;
+        return $discountPrice > 0 ? $discountPrice : (float) $this->price_usd;
     }
 
-    public function getEffectivePriceCop(): float
+    public function hasDiscount(): bool
     {
-        return (float) $this->price_cop;
+        return (float) $this->price_cop > 0 && (float) $this->price_cop < (float) $this->price_usd;
     }
 
     public function getVariantsWithPricesAttribute()
