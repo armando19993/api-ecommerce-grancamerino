@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,10 +13,20 @@ class Product extends Model
     /** @use HasFactory<\Database\Factories\ProductFactory> */
     use HasFactory, HasUuids;
 
-    protected $keyType = 'string';
+    protected $keyType = "string";
+
     public $incrementing = false;
 
-    protected $fillable = ['name', 'slug', 'category_id', 'team_id', 'price_usd', 'price_cop', 'description', 'is_active'];
+    protected $fillable = [
+        "name",
+        "slug",
+        "category_id",
+        "team_id",
+        "price_usd",
+        "price_cop",
+        "description",
+        "is_active",
+    ];
 
     public function category(): BelongsTo
     {
@@ -34,26 +43,30 @@ class Product extends Model
         return $this->belongsTo(Size::class);
     }
 
-    public function getBasePriceAttribute()
+    public function getEffectivePriceUsd(): float
     {
-        return [
-            'usd' => $this->price_usd,
-            'cop' => $this->price_cop
-        ];
+        return (float) $this->price_usd;
+    }
+
+    public function getEffectivePriceCop(): float
+    {
+        return (float) $this->price_cop;
     }
 
     public function getVariantsWithPricesAttribute()
     {
         return $this->variants->map(function ($variant) {
             return [
-                'id' => $variant->id,
-                'size' => $variant->size->name,
-                'sku' => $variant->sku,
-                'stock' => $variant->stock,
-                'price_usd' => $this->price_usd + ($variant->additional_price_usd ?? 0),
-                'price_cop' => $this->price_cop + ($variant->additional_price_cop ?? 0),
-                'additional_price_usd' => $variant->additional_price_usd ?? 0,
-                'additional_price_cop' => $variant->additional_price_cop ?? 0,
+                "id" => $variant->id,
+                "size" => $variant->size->name,
+                "sku" => $variant->sku,
+                "stock" => $variant->stock,
+                "price_usd" =>
+                    $this->price_usd + ($variant->additional_price_usd ?? 0),
+                "price_cop" =>
+                    $this->price_cop + ($variant->additional_price_cop ?? 0),
+                "additional_price_usd" => $variant->additional_price_usd ?? 0,
+                "additional_price_cop" => $variant->additional_price_cop ?? 0,
             ];
         });
     }
@@ -70,7 +83,10 @@ class Product extends Model
 
     public function specialCategories(): BelongsToMany
     {
-        return $this->belongsToMany(SpecialCategory::class, 'product_special_category');
+        return $this->belongsToMany(
+            SpecialCategory::class,
+            "product_special_category"
+        );
     }
 
     public function favorites(): HasMany
