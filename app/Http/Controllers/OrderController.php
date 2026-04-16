@@ -593,7 +593,6 @@ class OrderController extends Controller
                 }
 
                 // Agregar shipping como line item si aplica
-
                 if ($shippingAmount > 0) {
                     $stripeItems[] = [
                         'name' => 'Envío',
@@ -603,23 +602,20 @@ class OrderController extends Controller
                     ];
                 }
 
-                // Si hay descuento, agregarlo como line item con precio negativo
+                // El descuento del cupón se aplica via Stripe Coupon API, no como line item negativo
+                $lineItems = $this->stripeService->formatLineItems($stripeItems, 'usd');
 
-                // Nota: Stripe maneja esto correctamente en checkout sessions
-
+                // Crear cupón en Stripe si hay descuento
+                $stripeCouponId = null;
                 if ($discountAmount > 0) {
-                    $stripeItems[] = [
-                        'name' => 'Descuento',
-                        'description' => 'Cupón aplicado',
-                        'unit_price' => -$discountAmount,
-                        'quantity' => 1,
-                    ];
+                    $stripeCouponId = $this->stripeService->createCoupon($discountAmount, 'usd');
+                    if (!$stripeCouponId) {
+                        Log::warning('Stripe: Could not create discount coupon, proceeding without discount', [
+                            'order_id' => $order->id,
+                            'discount_amount' => $discountAmount,
+                        ]);
+                    }
                 }
-
-                $lineItems = $this->stripeService->formatLineItems(
-                    $stripeItems,
-                    'usd'
-                );
 
                 Log::info('Stripe: Line items prepared', [
                     'order_id' => $order->id,
@@ -627,6 +623,7 @@ class OrderController extends Controller
                     'subtotal' => $subtotal,
                     'shipping' => $shippingAmount,
                     'discount' => $discountAmount,
+                    'stripe_coupon_id' => $stripeCouponId,
                     'total' => $totalAmount,
                 ]);
 
@@ -642,9 +639,9 @@ class OrderController extends Controller
                     'order_number' => $order->order_number,
                     'customer_email' => $request->user()->email,
                     'line_items' => $lineItems,
-                    'success_url' =>
-                        $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
+                    'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}',
                     'cancel_url' => $cancelUrl,
+                    'discount_coupon_id' => $stripeCouponId,
                 ]);
 
                 if ($session) {

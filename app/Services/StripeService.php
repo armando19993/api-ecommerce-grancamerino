@@ -19,14 +19,44 @@ class StripeService
     }
 
     /**
+     * Create a Stripe Coupon for a one-time discount amount
+     */
+    public function createCoupon(float $discountAmount, string $currency = 'usd'): ?string
+    {
+        try {
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->asForm()
+                ->post("{$this->apiUrl}/coupons", [
+                    'amount_off' => (int)($discountAmount * 100), // centavos
+                    'currency'   => $currency,
+                    'duration'   => 'once',
+                ]);
+
+            if ($response->successful()) {
+                $couponId = $response->json()['id'];
+                Log::info('Stripe: Coupon created', ['coupon_id' => $couponId, 'amount_off' => $discountAmount]);
+                return $couponId;
+            }
+
+            Log::error('Stripe: Failed to create coupon', [
+                'status'   => $response->status(),
+                'response' => $response->json(),
+            ]);
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Stripe: Exception creating coupon', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
      * Create a Stripe Checkout Session
      */
     public function createCheckoutSession(array $data)
     {
         try {
-            $response = Http::withBasicAuth($this->secretKey, '')
-                ->asForm()
-                ->post("{$this->apiUrl}/checkout/sessions", [
+            $payload = [
                     'mode' => 'payment',
                     'success_url' => $data['success_url'],
                     'cancel_url' => $data['cancel_url'],
@@ -43,7 +73,16 @@ class StripeService
                         'order_id' => $data['order_id'],
                         'order_number' => $data['order_number'] ?? null,
                     ]
-                ]);
+                ];
+
+            // Aplicar cupón de descuento si se proporcionó
+            if (!empty($data['discount_coupon_id'])) {
+                $payload['discounts'] = [['coupon' => $data['discount_coupon_id']]];
+            }
+
+            $response = Http::withBasicAuth($this->secretKey, '')
+                ->asForm()
+                ->post("{$this->apiUrl}/checkout/sessions", $payload);
 
             if ($response->successful()) {
                 Log::info('Stripe: Checkout session created', [
